@@ -11,6 +11,9 @@ struct Node<T> {
 }
 
 pub struct IntoIter<T>(List<T>);
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>
+}
 
 impl<T> List<T> {
     pub fn new() -> Self {
@@ -49,13 +52,16 @@ impl<T> List<T> {
         })
     }
 
-    // iterator
+    // iterators
     pub fn into_iter(self) -> IntoIter<T> {
         IntoIter(self)
     }
+    pub fn iter(&self) -> Iter<T> {
+        Iter { next: self.head.as_deref() }
+    }
 }
 
-// Implement IntoIter
+// Implement Iterators
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
@@ -63,6 +69,19 @@ impl<T> Iterator for IntoIter<T> {
         self.0.pop()
     }
 }
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.map(|node| {
+            self.next = node.next.as_ref().map::<&Node<T>, _>(|node| &node);
+            &node.elem
+        })
+    }
+}
+
+
 
 // Drop list and free memory
 impl<T> Drop for List<T> {
@@ -136,5 +155,16 @@ mod tests {
 
         // Check exhaustion
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn iter() {
+        let mut list = List::new();
+        list.push(1); list.push(2); list.push(3);
+
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&1));
     }
 }
